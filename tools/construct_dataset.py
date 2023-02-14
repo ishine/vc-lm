@@ -2,6 +2,7 @@ import fire
 import glob
 import math
 import numpy as np
+import os
 from typing import List, Any
 from tqdm.auto import tqdm
 from joblib.parallel import Parallel, delayed
@@ -77,6 +78,7 @@ def construct_dataset(input_dir,
                       output_dir,
                       partition_size=100,
                       num_workers=10):
+    os.makedirs(output_dir, exist_ok=True)
     input_files = glob.glob(f"{input_dir}/**/*.wav", recursive=True)
     columns = {
         'mel': 'pkl',
@@ -85,7 +87,7 @@ def construct_dataset(input_dir,
     # Shard compression, if any
     compression = 'zstd'
 
-    with MDSWriter(output_dir, columns, compression, 1 << 31) as out:
+    with MDSWriter(output_dir, columns, compression, size_limit=1 << 31) as out:
         for partition_start in tqdm(range(0, len(input_files), partition_size)):
             audios = input_files[partition_start:partition_start+partition_size]
             records = process_audios(audios, num_workers=num_workers)
