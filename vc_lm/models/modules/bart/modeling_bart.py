@@ -43,7 +43,7 @@ from transformers.utils import (
     logging,
     replace_return_docstrings,
 )
-from .configuration_bart import BartConfig
+from vc_lm.models.modules.bart.configuration_bart import BartConfig
 
 
 logger = logging.get_logger(__name__)
