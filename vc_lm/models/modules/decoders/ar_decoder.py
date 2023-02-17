@@ -5,11 +5,47 @@ import random
 from torch import nn
 
 from typing import Optional, Union, List, Tuple
-from vc_lm.models.modules.bart.modeling_bart import BartPretrainedModel, \
-        BartConfig, BartLearnedPositionalEmbedding, BartDecoderLayer, _make_causal_mask, _expand_mask, BaseModelOutputWithPastAndCrossAttentions
+from vc_lm.models.modules.bart.modeling_bart import BartLearnedPositionalEmbedding, BartDecoderLayer, _make_causal_mask, _expand_mask, BaseModelOutputWithPastAndCrossAttentions
+
+from transformers import PreTrainedModel
+
+from vc_lm.models.configuration import VCLMConfig
+
+class VCLMPretrainedModel(PreTrainedModel):
+    config_class = VCLMConfig
+    base_model_prefix = "model"
+    supports_gradient_checkpointing = True
+    _keys_to_ignore_on_load_unexpected = [r"encoder.version", r"decoder.version"]
+    _no_split_modules = [r"BartEncoderLayer", r"BartDecoderLayer"]
+
+    def _init_weights(self, module):
+        std = self.config.init_std
+        if isinstance(module, nn.Linear):
+            module.weight.data.normal_(mean=0.0, std=std)
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.Embedding):
+            module.weight.data.normal_(mean=0.0, std=std)
+            if module.padding_idx is not None:
+                module.weight.data[module.padding_idx].zero_()
+
+    def _set_gradient_checkpointing(self, module, value=False):
+        # if isinstance(module, (ARDecoder, NARDecoder)):
+        if isinstance(module, (ARDecoder, )):
+            module.gradient_checkpointing = value
+
+    @property
+    def dummy_inputs(self):
+        pad_token = self.config.pad_token_id
+        input_ids = torch.tensor([[0, 6, 10, 4, 2], [0, 8, 12, 2, pad_token]], device=self.device)
+        dummy_inputs = {
+            "attention_mask": input_ids.ne(pad_token),
+            "input_ids": input_ids,
+        }
+        return dummy_inputs
 
 
-class BartDecoder(BartPretrainedModel):
+class ARDecoder(VCLMPretrainedModel):
     """
     Transformer decoder consisting of *config.decoder_layers* layers. Each layer is a [`BartDecoderLayer`]
 
@@ -18,7 +54,7 @@ class BartDecoder(BartPretrainedModel):
         embed_tokens (nn.Embedding): output embedding
     """
 
-    def __init__(self, config: BartConfig, embed_tokens: Optional[nn.Embedding] = None):
+    def __init__(self, config: VCLMConfig, embed_tokens: Optional[nn.Embedding] = None):
         super().__init__(config)
         self.dropout = config.dropout
         self.layerdrop = config.decoder_layerdrop

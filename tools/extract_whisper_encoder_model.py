@@ -2,9 +2,9 @@ import fire
 import torch
 import whisper
 
-def extract_whisper_encoder_model(input_model='/root/autodl-tmp/cache/whisper/small.pt',
+def extract_whisper_encoder_model(input_model='/root/autodl-tmp/cache/whisper/medium.pt',
                                   output_model=None):
-    checkpoint = torch.load('/root/autodl-tmp/cache/whisper/small.pt')
+    checkpoint = torch.load(input_model)
     dims = checkpoint['dims']
     model = whisper.load_model(input_model)
     model_state_dict = model.encoder.state_dict()
