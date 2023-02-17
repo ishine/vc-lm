@@ -107,6 +107,7 @@ class VCLMConfig(PretrainedConfig):
         is_encoder_decoder=True,
         decoder_start_token_id=2,
         forced_eos_token_id=1024 * 8,
+        encoder_model_path="/whisper-medium-encoder.pt",
         **kwargs,
     ):
         self.vocab_size = vocab_size
@@ -124,6 +125,7 @@ class VCLMConfig(PretrainedConfig):
         self.classifier_dropout = classifier_dropout
         self.use_cache = use_cache
         self.scale_embedding = scale_embedding  # scale factor will be sqrt(d_model) if True
+        self.encoder_model_path = encoder_model_path
 
         super().__init__(
             num_labels=num_labels,
