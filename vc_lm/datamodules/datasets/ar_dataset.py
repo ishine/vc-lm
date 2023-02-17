@@ -10,7 +10,8 @@ class ARDataset(StreamingDataset):
     _MEL_SAMPLE_RATE = 100
     _CODE_SAMPLE_RATE = 75
     _NUM_Q = 8
-    _EOS_ID = 1024
+    _EOS_ID = 1024 * 8
+    _PAD_ID = 1024 * 8 + 1
     def __init__(self,
                  local,
                  remote=None,
@@ -41,14 +42,15 @@ class ARDataset(StreamingDataset):
         mel = pad_or_trim(obj['mel'], self.max_mel_len)
         # （_NUM_Q, code_len）
         input_code = obj['code'].astype(np.int64)
-        output_code = np.concatenate([input_code, np.ones([self._NUM_Q, 1], dtype=np.int64)], axis=1)
+        output_code = np.concatenate([input_code, np.ones([self._NUM_Q, 1], dtype=np.int64) * self._EOS_ID], axis=1)
         code_len = input_code.shape[1]
         # (max_code_len,)
         code_mask = torch.lt(torch.arange(0, self.max_code_len),
                              code_len).type(torch.long)
         # pad input_code, output_code
-        input_code = pad_or_trim(input_code[0], self.max_code_len)
-        output_code = pad_or_trim(output_code[0][1:], self.max_code_len)
+        input_code = pad_or_trim(input_code[0], self.max_code_len, pad_value=self._PAD_ID)
+        output_code = pad_or_trim(output_code[0][1:], self.max_code_len,
+                                  pad_value=self._PAD_ID)
         return {
             'mel': mel,
             'content_mask': content_mask,
