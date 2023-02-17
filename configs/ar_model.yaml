@@ -1,0 +1,15 @@
+seed_everything: true
+trainer:
+  logger: true
+model:
+  class_path: vc_lm.models.ar_model_pl.ARModelPL
+  init_args:
+    config_file: vc_lm/configs/ar_model.json
+    lr: 0.001
+    weight_decay: 0.0005
+data:
+  class_path: vc_lm.datamodules.ar_datamodule.ARDataModule
+  init_args:
+    data_dir: "/root/autodl-tmp/data/vc-lm-outputs"
+    batch_size: 2
+    max_audio_time: 30
