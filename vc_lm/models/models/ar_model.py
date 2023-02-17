@@ -41,6 +41,7 @@ class ARModel(VCLMPretrainedModel):
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
 
         self.encoder = WhisperEncoder.from_pretrained(config.encoder_model_path)
+        self.encoder.freeze()
         self.decoder = ARDecoder(config, self.shared)
         # Initialize weights and apply final processing
         self.post_init()
@@ -60,7 +61,7 @@ class ARModel(VCLMPretrainedModel):
 
     def forward(
         self,
-        input_ids: torch.LongTensor = None,
+        input_ids: torch.FloatTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         decoder_input_ids: Optional[torch.LongTensor] = None,
         decoder_attention_mask: Optional[torch.LongTensor] = None,
@@ -76,19 +77,6 @@ class ARModel(VCLMPretrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, Seq2SeqModelOutput]:
-        # different to other models, Bart automatically creates decoder_input_ids from
-        # input_ids if no decoder_input_ids are provided
-        if decoder_input_ids is None and decoder_inputs_embeds is None:
-            if input_ids is None:
-                raise ValueError(
-                    "If no `decoder_input_ids` or `decoder_inputs_embeds` are "
-                    "passed, `input_ids` cannot be `None`. Please pass either "
-                    "`input_ids` or `decoder_input_ids` or `decoder_inputs_embeds`."
-                )
-
-            decoder_input_ids = shift_tokens_right(
-                input_ids, self.config.pad_token_id, self.config.decoder_start_token_id
-            )
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -98,15 +86,13 @@ class ARModel(VCLMPretrainedModel):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         if encoder_outputs is None:
-            encoder_outputs = self.encoder(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                head_mask=head_mask,
-                inputs_embeds=inputs_embeds,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-            )
+            with torch.inference_mode():
+                whisper_outputs = self.encoder(input_ids)
+                encoder_outputs = BaseModelOutput(
+                    last_hidden_state=whisper_outputs[:, 0, :],
+                    hidden_states=whisper_outputs,
+                    attentions=attention_mask
+                )
         # If the user passed a tuple for encoder_outputs, we wrap it in a BaseModelOutput when return_dict=True
         elif return_dict and not isinstance(encoder_outputs, BaseModelOutput):
             encoder_outputs = BaseModelOutput(
