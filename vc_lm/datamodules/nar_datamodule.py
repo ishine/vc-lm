@@ -20,7 +20,7 @@ class NARDataModule(pl.LightningDataModule):
     def __init__(self,
                  data_dir: str,
                  batch_size: int = 64,
-                 max_audio_time: float = 30,
+                 max_audio_time: float = 24,
                  style_audio_time: float = 3,
                  num_workers: int = 0,
                  pin_memory: bool = False):

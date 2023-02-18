@@ -12,14 +12,15 @@ class ARDataset(StreamingDataset):
     _NUM_Q = 8
     _EOS_ID = 1024 * 8
     _PAD_ID = 1024 * 8 + 1
+    _MAX_MEL_AUDIO_TIME = 30
     def __init__(self,
                  local,
                  remote=None,
-                 max_audio_time=30,
+                 max_audio_time=24,
                  shuffle=False):
         super().__init__(local, remote, shuffle=shuffle)
         self.max_audio_time = max_audio_time
-        self.max_mel_len = int(self._MEL_SAMPLE_RATE * self.max_audio_time)
+        self.max_mel_len = int(self._MEL_SAMPLE_RATE * self._MAX_MEL_AUDIO_TIME)
         self.max_code_len = int(self._CODE_SAMPLE_RATE * self.max_audio_time)
         self.max_content_len = math.ceil(self.max_mel_len/2)
 

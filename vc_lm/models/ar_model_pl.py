@@ -25,9 +25,18 @@ class ARModelPL(pl.LightningModule):
         self.lm_head = nn.Linear(config.d_model,
                                  self.model.shared.num_embeddings, bias=False)
         self.loss_fct = nn.CrossEntropyLoss()
-        self.train_accuracy = Accuracy(ignore_index=-100)
-        self.val_accuracy = Accuracy(ignore_index=-100)
-        self.test_accuracy = Accuracy(ignore_index=-100)
+        self.train_accuracy = Accuracy(task="multiclass",
+                                       num_classes=self.model.shared.num_embeddings,
+                                       average='micro',
+                                       ignore_index=-100)
+        self.val_accuracy = Accuracy(task="multiclass",
+                                     num_classes=self.model.shared.num_embeddings,
+                                     average='micro',
+                                     ignore_index=-100)
+        self.test_accuracy = Accuracy(task="multiclass",
+                                      num_classes=self.model.shared.num_embeddings,
+                                      average='micro',
+                                      ignore_index=-100)
 
     def forward(self,
                 input_mels=None,

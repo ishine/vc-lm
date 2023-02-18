@@ -2,6 +2,7 @@ import unittest
 
 from vc_lm.datamodules.ar_datamodule import ARDataModule
 
+from tqdm.auto import tqdm
 
 class TestArDataModule(unittest.TestCase):
     def setUp(self) -> None:
@@ -12,8 +13,10 @@ class TestArDataModule(unittest.TestCase):
         self.data_module.prepare_data()
         self.data_module.setup()
         assert self.data_module.train_dataloader() and self.data_module.val_dataloader() and self.data_module.test_dataloader()
-        item = next(iter(self.data_module.train_dataloader()))
-        self.assertTrue(True)
+        # item = next(iter(self.data_module.train_dataloader()))
+        # self.assertTrue(True)
+        for item in tqdm(self.data_module.train_dataloader()):
+            pass
 
 if __name__ == '__main__':
     unittest.main()

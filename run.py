@@ -1,5 +1,5 @@
 import sys
-from pytorch_lightning.cli import LightningCLI
+from pytorch_lightning.utilities.cli import LightningCLI
 from pytorch_lightning import LightningDataModule, LightningModule
 sys.path.insert(0, '.')
 

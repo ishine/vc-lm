@@ -9,7 +9,7 @@ class ARDataModule(pl.LightningDataModule):
     def __init__(self,
                  data_dir: str,
                  batch_size: int = 64,
-                 max_audio_time: float = 30,
+                 max_audio_time: float = 24,
                  num_workers: int = 0,
                  pin_memory: bool = False):
         super().__init__()
