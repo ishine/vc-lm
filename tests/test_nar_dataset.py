@@ -4,7 +4,7 @@ from vc_lm.datamodules.datasets.nar_dataset import NARDataset
 
 class TestARDataset(unittest.TestCase):
     def setUp(self) -> None:
-        self.dataset = NARDataset('/root/autodl-tmp/data/vc-lm-outputs/train')
+        self.dataset = NARDataset('/root/autodl-tmp/data/vc-lm-sample/train')
 
     def test_nar_dataset(self):
         item = next(iter(self.dataset))

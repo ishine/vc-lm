@@ -8,11 +8,11 @@ from torch.utils.data import Dataset, DataLoader, default_collate
 from vc_lm.datamodules.datasets.nar_dataset import NARDataset
 
 def nar_collate_fn(x):
-    nar_stage = random.randint(0, NARDataset._NUM_Q - 1)
+    nar_stage = random.randint(0, NARDataset._NUM_Q - 2)
     for idx, item in enumerate(x):
         item['nar_stage'] = torch.tensor(nar_stage)
         item['output_code'] = item['input_code'][item['nar_stage'] + 1]
-        item['input_code'] = item['input_code'][item['nar_stage']]
+        item['input_code'] = item['input_code'][0:item['nar_stage'] + 1]
     return default_collate(x)
 
 
