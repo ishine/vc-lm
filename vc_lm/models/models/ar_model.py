@@ -40,7 +40,7 @@ class ARModel(VCLMPretrainedModel):
         padding_idx, vocab_size = config.pad_token_id, config.vocab_size
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
 
-        self.encoder = WhisperEncoder.from_pretrained(config.encoder_model_path)
+        self.encoder = WhisperEncoder(config)
         self.encoder.freeze()
         self.decoder = ARDecoder(config, self.shared)
         # Initialize weights and apply final processing
@@ -86,8 +86,7 @@ class ARModel(VCLMPretrainedModel):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         if encoder_outputs is None:
-            whisper_outputs = self.encoder(input_ids)
-            encoder_outputs = tuple([whisper_outputs, whisper_outputs, attention_mask])
+            encoder_outputs = self.encoder(input_ids)
         # If the user passed a tuple for encoder_outputs, we wrap it in a BaseModelOutput when return_dict=True
         elif return_dict and not isinstance(encoder_outputs, BaseModelOutput):
             encoder_outputs = BaseModelOutput(
