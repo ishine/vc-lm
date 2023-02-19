@@ -8,7 +8,7 @@ from torchmetrics.classification.accuracy import Accuracy
 from torch.optim import Adam
 
 from vc_lm.models.base import VCLMConfig
-from vc_lm.models.models.ar_model import ARModel
+from vc_lm.models.models.ar_model import ARModel, ARModelForConditionalGeneration
 
 class ARModelPL(pl.LightningModule):
     def __init__(self, config_file: str,
@@ -19,22 +19,18 @@ class ARModelPL(pl.LightningModule):
         with open(config_file) as f:
             config = json.load(f)
         config = VCLMConfig(**config)
-        self.model = ARModel(config)
-        self.register_buffer('final_logits_bias',
-                             torch.zeros((1, self.model.shared.num_embeddings)))
-        self.lm_head = nn.Linear(config.d_model,
-                                 self.model.shared.num_embeddings, bias=False)
+        self.model = ARModelForConditionalGeneration(config)
         self.loss_fct = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass",
-                                       num_classes=self.model.shared.num_embeddings,
+                                       num_classes=self.model.model.shared.num_embeddings,
                                        average='micro',
                                        ignore_index=-100)
         self.val_accuracy = Accuracy(task="multiclass",
-                                     num_classes=self.model.shared.num_embeddings,
+                                     num_classes=self.model.model.shared.num_embeddings,
                                      average='micro',
                                      ignore_index=-100)
         self.test_accuracy = Accuracy(task="multiclass",
-                                      num_classes=self.model.shared.num_embeddings,
+                                      num_classes=self.model.model.shared.num_embeddings,
                                       average='micro',
                                       ignore_index=-100)
 
@@ -47,9 +43,7 @@ class ARModelPL(pl.LightningModule):
                              attention_mask=attention_mask,
                              decoder_input_ids=decoder_input_ids,
                              decoder_attention_mask=decoder_attention_mask)
-        lm_logits = self.lm_head(outputs[0])
-        lm_logits = lm_logits + self.final_logits_bias.to(lm_logits.device)
-        return lm_logits
+        return outputs[0]
 
     def step(self, batch: Any):
         mel = batch['mel']
