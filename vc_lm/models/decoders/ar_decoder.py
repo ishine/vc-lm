@@ -5,7 +5,7 @@ import random
 from torch import nn
 
 from typing import Optional, Union, List, Tuple
-from transformers.models.bart.modeling_bart import BartLearnedPositionalEmbedding, BartDecoderLayer, _make_causal_mask, _expand_mask, BaseModelOutputWithPastAndCrossAttentions
+from vc_lm.models.bart.modeling_bart import BartLearnedPositionalEmbedding, BartDecoderLayer, _make_causal_mask, _expand_mask, BaseModelOutputWithPastAndCrossAttentions
 
 from transformers.utils import logging
 
