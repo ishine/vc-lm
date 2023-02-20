@@ -10,14 +10,17 @@ from vc_lm.models.bart.modeling_bart import BartLearnedPositionalEmbedding, Bart
 from transformers.utils import logging
 
 from vc_lm.models.base import VCLMConfig, VCLMPretrainedModel
+from vc_lm.models.misc import StageAdaLN
+from vc_lm.models.decoders.layers import NARStageDecoderLayer
 
 logger = logging.get_logger(__name__)
 
 
 class AccumulateMultiStageEmbedding(nn.Module):
     def __init__(self, embed_tokens: nn.Embedding,
-                 q_size: int =1024):
+                 q_size: int = 1024):
         """AccumulateMultiStageEmbedding"""
+        super().__init__()
         self.embed_tokens = embed_tokens
         self.q_size = q_size
 
@@ -67,8 +70,9 @@ class NARDecoder(VCLMPretrainedModel):
                                                                                    q_size=config.q_size)
         self.register_buffer('style_mask', torch.ones((1, config.style_length), dtype=torch.int64))
 
-        self.layers = nn.ModuleList([BartDecoderLayer(config) for _ in range(config.decoder_layers)])
-        self.layernorm_embedding = nn.LayerNorm(config.d_model)
+        self.layers = nn.ModuleList([NARStageDecoderLayer(config) for _ in range(config.decoder_layers)])
+        self.layernorm_embedding = StageAdaLN(nn.LayerNorm(config.d_model),
+                                              num_stage=config.n_q - 1)
 
         self.gradient_checkpointing = False
         # Initialize weights and apply final processing
@@ -148,7 +152,6 @@ class NARDecoder(VCLMPretrainedModel):
 
         attention_mask = _expand_mask(attention_mask, inputs_embeds.dtype)
 
-
         # expand encoder attention mask
         if encoder_hidden_states is not None and encoder_attention_mask is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
@@ -160,7 +163,7 @@ class NARDecoder(VCLMPretrainedModel):
         positions = positions.to(inputs_embeds.device)
 
         hidden_states = inputs_embeds + positions
-        hidden_states = self.layernorm_embedding(hidden_states)
+        hidden_states = self.layernorm_embedding(hidden_states, nar_stage)
 
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
 
