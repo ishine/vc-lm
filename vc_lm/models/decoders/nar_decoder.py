@@ -14,6 +14,26 @@ from vc_lm.models.base import VCLMConfig, VCLMPretrainedModel
 logger = logging.get_logger(__name__)
 
 
+class AccumulateMultiStageEmbedding(nn.Module):
+    def __init__(self, embed_tokens: nn.Embedding,
+                 q_size: int =1024):
+        """AccumulateMultiStageEmbedding"""
+        self.embed_tokens = embed_tokens
+        self.q_size = q_size
+
+    def forward(self, multistage_code: torch.LongTensor):
+        """
+        Args:
+            multistage_code: (batch_size, stage_num, seq_len)
+        Return:
+            multistage_code_emb: (batch_size, seq_len, dim)
+        """
+        stage_id = torch.arange(0, multistage_code.shape[1])[None, ..., None]
+        multistage_code = stage_id * self.q_size + multistage_code
+        # (batch_size, stage_num, seq_len, dim)
+        multistage_code = self.embed_tokens(multistage_code)
+        return torch.sum(multistage_code, dim=1)
+
 
 class NARDecoder(VCLMPretrainedModel):
     """
@@ -41,6 +61,12 @@ class NARDecoder(VCLMPretrainedModel):
             config.max_position_embeddings,
             config.d_model,
         )
+        self.style_positions = BartLearnedPositionalEmbedding(config.style_length, config.d_model)
+        self.stage_embed = nn.Embedding(config.num_q, config.d_model)
+        self.accumulate_multistage_embedding_layer = AccumulateMultiStageEmbedding(self.embed_tokens,
+                                                                                   q_size=config.q_size)
+        self.register_buffer('style_mask', torch.ones((1, config.style_length), dtype=torch.int64))
+
         self.layers = nn.ModuleList([BartDecoderLayer(config) for _ in range(config.decoder_layers)])
         self.layernorm_embedding = nn.LayerNorm(config.d_model)
 
@@ -77,20 +103,16 @@ class NARDecoder(VCLMPretrainedModel):
 
     def forward(
         self,
-        input_ids: torch.LongTensor = None,
+        input_code: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
         encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        encoder_attention_mask: Optional[torch.LongTensor] = None):
+        encoder_attention_mask: Optional[torch.LongTensor] = None,
+        style_code: torch.LongTensor = None,
+        nar_stage: torch.LongTensor = None,
+    ):
         r"""
         Args:
-            input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
-                Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you
-                provide it.
-
-                Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
-                [`PreTrainedTokenizer.__call__`] for details.
-
-                [What are input IDs?](../glossary#input-ids)
+            input_code: (`torch.LongTensor` of shape `(batch_size, num_stage, sequence_length)`)
             attention_mask (`torch.Tensor` of shape `(batch_size, sequence_length)`, *optional*):
                 Mask to avoid performing attention on padding token indices. Mask values selected in `[0, 1]`:
 
@@ -109,22 +131,32 @@ class NARDecoder(VCLMPretrainedModel):
                 - 0 for tokens that are **masked**.
 
                 [What are attention masks?](../glossary#attention-mask)
+            style_code: (`torch.LongTensor` of shape `(batch_size, num_q, style_len)`)
+            nar_stage: (`torch.LongTensor` of shape `(batch_size)`)
         """
-        input = input_ids
-        input_shape = input.shape
-        input_ids = input_ids.view(-1, input_shape[-1])
+        batch_size = input_code.shape[0]
+        # get input_code_embeds
+        # (batch_size, seq_len, dim)
+        input_code_embeds = self.accumulate_multistage_embedding_layer(input_code)
+        # (batch_size, style_len, dim)
+        style_code_embeds = self.accumulate_multistage_embedding_layer(style_code)
+        # (batch_size, style_len + seq_len, dim)
+        inputs_embeds = torch.cat([style_code_embeds, input_code_embeds], 1) * self.embed_scale
+        # pad style_mask: attention_mask (batch_size, style_len + seq_len)
+        attention_mask = torch.cat([self.style_mask.expand(batch_size, -1), attention_mask], 1)
+        input_shape = attention_mask.shape
 
-        inputs_embeds = self.embed_tokens(input) * self.embed_scale
+        attention_mask = _expand_mask(attention_mask, inputs_embeds.dtype)
 
-        attention_mask = self._prepare_decoder_attention_mask(
-            attention_mask, input_shape, inputs_embeds)
 
         # expand encoder attention mask
         if encoder_hidden_states is not None and encoder_attention_mask is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
             encoder_attention_mask = _expand_mask(encoder_attention_mask, inputs_embeds.dtype, tgt_len=input_shape[-1])
         # embed positions
-        positions = self.embed_positions(input, past_key_values_length=None)
+        style_positions = self.style_positions(style_code[:, 0, :], past_key_values_length=None)
+        input_code_positions = self.embed_positions(input_code[:, 0, :], past_key_values_length=None)
+        positions = torch.cat([style_positions, input_code_positions], 1)
         positions = positions.to(inputs_embeds.device)
 
         hidden_states = inputs_embeds + positions
@@ -133,11 +165,6 @@ class NARDecoder(VCLMPretrainedModel):
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
 
         # decoder layers
-        all_hidden_states = None
-        all_self_attns = None
-        all_cross_attentions = None
-        next_decoder_cache = None
-
         for idx, decoder_layer in enumerate(self.layers):
             # add LayerDrop (see https://arxiv.org/abs/1909.11556 for description)
             dropout_probability = random.uniform(0, 1)

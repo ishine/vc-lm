@@ -87,6 +87,7 @@ class VCLMConfig(PretrainedConfig):
         self,
         vocab_size=1024 * 8 + 3,
         max_position_embeddings=2048,
+        style_length=225,
         decoder_layers=12,
         decoder_ffn_dim=4096,
         decoder_attention_heads=16,
@@ -108,10 +109,13 @@ class VCLMConfig(PretrainedConfig):
         decoder_start_token_id=2,
         forced_eos_token_id=1024 * 8,
         encoder_model_path="/whisper-medium-encoder.pt",
+        n_q=8,
+        q_size=1024,
         **kwargs,
     ):
         self.vocab_size = vocab_size
         self.max_position_embeddings = max_position_embeddings
+        self.style_length = style_length
         self.d_model = d_model
         self.decoder_ffn_dim = decoder_ffn_dim
         self.decoder_layers = decoder_layers
@@ -126,6 +130,8 @@ class VCLMConfig(PretrainedConfig):
         self.use_cache = use_cache
         self.scale_embedding = scale_embedding  # scale factor will be sqrt(d_model) if True
         self.encoder_model_path = encoder_model_path
+        self.n_q = n_q
+        self.q_size = q_size
 
         super().__init__(
             num_labels=num_labels,

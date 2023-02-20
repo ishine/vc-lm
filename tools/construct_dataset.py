@@ -80,7 +80,6 @@ def construct_dataset(input_dir,
                       num_workers=10):
     os.makedirs(output_dir, exist_ok=True)
     input_files = glob.glob(f"{input_dir}/**/*.wav", recursive=True)
-    input_files = input_files[0:20] * 100
     columns = {
         'mel': 'pkl',
         'code': 'pkl'
