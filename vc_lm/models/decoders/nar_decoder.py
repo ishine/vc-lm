@@ -12,6 +12,7 @@ from transformers.utils import logging
 from vc_lm.models.base import VCLMConfig, VCLMPretrainedModel
 from vc_lm.models.misc import StageAdaLN
 from vc_lm.models.decoders.layers import NARStageDecoderLayer
+from vc_lm.datamodules.datasets.nar_dataset import NARDataset
 
 logger = logging.get_logger(__name__)
 
@@ -33,6 +34,7 @@ class AccumulateMultiStageEmbedding(nn.Module):
         """
         stage_id = torch.arange(0, multistage_code.shape[1], device=multistage_code.device)[None, ..., None]
         multistage_code = stage_id * self.q_size + multistage_code
+        multistage_code[multistage_code >= NARDataset._PAD_ID] = NARDataset._PAD_ID
         # (batch_size, stage_num, seq_len, dim)
         multistage_code = self.embed_tokens(multistage_code)
         return torch.sum(multistage_code, dim=1)

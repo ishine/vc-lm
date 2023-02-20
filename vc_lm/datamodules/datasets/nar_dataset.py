@@ -11,6 +11,7 @@ class NARDataset(StreamingDataset):
     _CODE_SAMPLE_RATE = 75
     _NUM_Q = 8
     _EOS_ID = 1024
+    _PAD_ID = 1024 * 8 + 1
     _MAX_MEL_AUDIO_TIME = 30
     def __init__(self,
                  local,
@@ -53,7 +54,8 @@ class NARDataset(StreamingDataset):
         style_code = input_code[:, style_start_pos:style_start_pos+self.style_code_len]
 
         # pad input_code, output_code
-        input_code = pad_or_trim(input_code, self.max_code_len)
+        input_code = pad_or_trim(input_code, self.max_code_len,
+                                 pad_value=self._PAD_ID)
         return {
             'mel': mel,
             'content_mask': content_mask,
