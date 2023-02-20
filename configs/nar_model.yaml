@@ -1,7 +1,7 @@
 seed_everything: 42
 trainer:
   logger: true
-  default_root_dir: "/root/autodl-tmp/models/vclm-ar"
+  default_root_dir: "/root/autodl-tmp/models/vclm-nar"
   accelerator: gpu
   callbacks:
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
@@ -11,17 +11,17 @@ trainer:
         save_top_k: 2 # save k best models (determined by above metric)
         save_last: True # additionaly always save model from last epoch
         verbose: True
-        dirpath: "/root/autodl-tmp/models/vclm-ar"
+        dirpath: "/root/autodl-tmp/models/vclm-nar"
         filename: "epoch_{epoch:03d}"
         auto_insert_metric_name: False
 model:
-  class_path: vc_lm.models.ar_model_pl.ARModelPL
+  class_path: vc_lm.models.nar_model_pl.NARModelPL
   init_args:
-    config_file: /root/project/vc-lm/configs/ar_model.json
+    config_file: /root/project/vc-lm/configs/nar_model.json
     lr: 0.00005
     weight_decay: 0.0005
 data:
-  class_path: vc_lm.datamodules.ar_datamodule.ARDataModule
+  class_path: vc_lm.datamodules.nar_datamodule.NARDataModule
   init_args:
     data_dir: "/root/autodl-tmp/data/vc-lm-tts-outputs"
     batch_size: 2

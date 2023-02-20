@@ -11,7 +11,7 @@ from vc_lm.models.base import VCLMConfig
 from vc_lm.models.models.nar_model import NARModel
 
 
-class ARModelPL(pl.LightningModule):
+class NARModelPL(pl.LightningModule):
     def __init__(self, config_file: str,
                  lr: float = 0.001,
                  weight_decay: float = 0.0005):
