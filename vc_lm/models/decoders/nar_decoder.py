@@ -213,5 +213,5 @@ class NARDecoder(VCLMPretrainedModel):
                     use_cache=use_cache,
                 )
             hidden_states = layer_outputs[0]
-
-        return hidden_states
+        # extract code hidden_states
+        return hidden_states[:, self.config.style_length:]
