@@ -23,15 +23,15 @@ class NARModelPL(pl.LightningModule):
         self.model = NARModel(config)
         self.loss_fct = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass",
-                                       num_classes=self.model.model.shared.num_embeddings,
+                                       num_classes=self.model.shared.num_embeddings,
                                        average='micro',
                                        ignore_index=-100)
         self.val_accuracy = Accuracy(task="multiclass",
-                                     num_classes=self.model.model.shared.num_embeddings,
+                                     num_classes=self.model.shared.num_embeddings,
                                      average='micro',
                                      ignore_index=-100)
         self.test_accuracy = Accuracy(task="multiclass",
-                                      num_classes=self.model.model.shared.num_embeddings,
+                                      num_classes=self.model.shared.num_embeddings,
                                       average='micro',
                                       ignore_index=-100)
 
@@ -51,7 +51,6 @@ class NARModelPL(pl.LightningModule):
                              style_code=style_code,
                              nar_stage=nar_stage)
         return outputs
-
 
     def step(self, batch: Any):
         _, lm_logits = self.forward(input_mels=batch['mel'],

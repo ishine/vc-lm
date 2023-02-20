@@ -19,4 +19,10 @@ class StageAdaLN(nn.Module):
             y: torch.Tensor (batch_size, ..., dim)
         """
         y = self.layer_norm(x)
-        return y * self.stage_w[stage_id] + self.stage_b[stage_id]
+        expand_number = y.ndim - len(self.layer_norm.normalized_shape) - 1
+        # (batch_size, *dim)
+        c_w, c_b = self.stage_w[stage_id], self.stage_b[stage_id]
+        for i in range(expand_number):
+            c_w = c_w.unsqueeze(1)
+            c_b = c_b.unsqueeze(1)
+        return y * c_w + c_b

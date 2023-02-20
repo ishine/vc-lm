@@ -17,7 +17,8 @@ class NARStageDecoderLayer(nn.Module):
         self.activation_fn = ACT2FN[config.activation_function]
         self.activation_dropout = config.activation_dropout
 
-        self.self_attn_layer_norm = StageAdaLN(self.embed_dim, config.n_q)
+        self.self_attn_layer_norm = nn.LayerNorm(self.embed_dim)
+        self.self_attn_layer_norm = StageAdaLN(self.self_attn_layer_norm, config.n_q - 1)
 
         self.encoder_attn = BartAttention(
             self.embed_dim,
@@ -25,11 +26,14 @@ class NARStageDecoderLayer(nn.Module):
             dropout=config.attention_dropout,
             is_decoder=True,
         )
-        self.encoder_attn_layer_norm = StageAdaLN(self.embed_dim, config.n_q)
+        self.encoder_attn_layer_norm = nn.LayerNorm(self.embed_dim)
+        self.encoder_attn_layer_norm = StageAdaLN(self.encoder_attn_layer_norm, config.n_q - 1)
 
         self.fc1 = nn.Linear(self.embed_dim, config.decoder_ffn_dim)
         self.fc2 = nn.Linear(config.decoder_ffn_dim, self.embed_dim)
-        self.final_layer_norm = StageAdaLN(self.embed_dim, config.n_q)
+        self.final_layer_norm = nn.LayerNorm(self.embed_dim)
+        self.final_layer_norm = StageAdaLN(self.final_layer_norm, config.n_q - 1)
+
 
     def forward(
         self,

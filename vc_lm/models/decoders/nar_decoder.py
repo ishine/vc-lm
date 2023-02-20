@@ -31,7 +31,7 @@ class AccumulateMultiStageEmbedding(nn.Module):
         Return:
             multistage_code_emb: (batch_size, seq_len, dim)
         """
-        stage_id = torch.arange(0, multistage_code.shape[1])[None, ..., None]
+        stage_id = torch.arange(0, multistage_code.shape[1], device=multistage_code.device)[None, ..., None]
         multistage_code = stage_id * self.q_size + multistage_code
         # (batch_size, stage_num, seq_len, dim)
         multistage_code = self.embed_tokens(multistage_code)
@@ -65,7 +65,6 @@ class NARDecoder(VCLMPretrainedModel):
             config.d_model,
         )
         self.style_positions = BartLearnedPositionalEmbedding(config.style_length, config.d_model)
-        self.stage_embed = nn.Embedding(config.num_q, config.d_model)
         self.accumulate_multistage_embedding_layer = AccumulateMultiStageEmbedding(self.embed_tokens,
                                                                                    q_size=config.q_size)
         self.register_buffer('style_mask', torch.ones((1, config.style_length), dtype=torch.int64))
@@ -157,8 +156,8 @@ class NARDecoder(VCLMPretrainedModel):
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
             encoder_attention_mask = _expand_mask(encoder_attention_mask, inputs_embeds.dtype, tgt_len=input_shape[-1])
         # embed positions
-        style_positions = self.style_positions(style_code[:, 0, :], past_key_values_length=None)
-        input_code_positions = self.embed_positions(input_code[:, 0, :], past_key_values_length=None)
+        style_positions = self.style_positions(style_code[:, 0, :], past_key_values_length=0)
+        input_code_positions = self.embed_positions(input_code[:, 0, :], past_key_values_length=0)
         positions = torch.cat([style_positions, input_code_positions], 1)
         positions = positions.to(inputs_embeds.device)
 
@@ -210,7 +209,8 @@ class NARDecoder(VCLMPretrainedModel):
                     cross_attn_layer_head_mask=None,
                     past_key_value=past_key_value,
                     output_attentions=None,
-                    use_cache=use_cache,
+                    use_cache=False,
+                    nar_stage=nar_stage
                 )
             hidden_states = layer_outputs[0]
         # extract code hidden_states

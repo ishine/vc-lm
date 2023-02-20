@@ -1,6 +1,16 @@
-import torch
-import numpy as np
 from torch.nn import functional as F
+
+import numpy as np
+from typing import Any
+
+from encodec.utils import convert_audio
+
+import torchaudio
+import torch
+
+from whisper.audio import log_mel_spectrogram
+
+
 def pad_or_trim(array, length: int, axis: int = -1,
                 pad_value=0):
     """
@@ -26,3 +36,22 @@ def pad_or_trim(array, length: int, axis: int = -1,
                            constant_values=pad_value)
 
     return array
+
+
+def get_code(audio: str,
+             device: str,
+             model: Any):
+    wav, sr = torchaudio.load(audio)
+    wav = convert_audio(wav, sr, model.sample_rate, model.channels)
+    wav = wav.unsqueeze(0)
+    wav = wav.cuda(device)
+    # Extract discrete codes from EnCodec
+    with torch.no_grad():
+        encoded_frames = model.encode(wav)
+    code = torch.cat([encoded[0] for encoded in encoded_frames], dim=-1)  # [B, n_q, T]
+    return code.cpu().numpy().astype(np.int16)[0]
+
+
+def get_mel_spectrogram(audio):
+    mel = log_mel_spectrogram(audio)
+    return mel.numpy()
