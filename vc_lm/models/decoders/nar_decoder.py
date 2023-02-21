@@ -59,6 +59,8 @@ class NARDecoder(VCLMPretrainedModel):
 
         self.embed_tokens = nn.Embedding(config.vocab_size, config.d_model, self.padding_idx)
 
+        self.stage_embed = nn.Embedding(config.n_q, config.d_model)
+
         if embed_tokens is not None:
             self.embed_tokens.weight = embed_tokens.weight
 
@@ -143,6 +145,10 @@ class NARDecoder(VCLMPretrainedModel):
         # get input_code_embeds
         # (batch_size, seq_len, dim)
         input_code_embeds = self.accumulate_multistage_embedding_layer(input_code)
+
+        # add stage embedding
+        input_code_embeds = self.stage_embed(nar_stage).unsqueeze(1) + input_code_embeds
+
         # (batch_size, style_len, dim)
         style_code_embeds = self.accumulate_multistage_embedding_layer(style_code)
         # (batch_size, style_len + seq_len, dim)

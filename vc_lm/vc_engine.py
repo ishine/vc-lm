@@ -98,8 +98,8 @@ class VCEngine(object):
         # (n_q, style_code_len)
         style_code = torch.tensor(get_code(style_audio, 'cuda:0', self.encodec_model), dtype=torch.int64).cuda()[:, 0:3*75]
         # Process ARModel
-        #codes_0 = self.process_ar(content_mel, content_code, style_mel, style_code)
-        codes_0 = content_code[0]
+        codes_0 = self.process_ar(content_mel, content_code, style_mel, style_code)
+        # codes_0 = content_code[0]
         # Process NARModel
         full_codes = self.process_nar(content_mel, style_code, codes_0)
         # Decode encodec
@@ -114,8 +114,8 @@ if __name__ == '__main__':
                       '/root/autodl-tmp/models/vclm-nar/last.ckpt',
                       '/root/project/vc-lm/configs/ar_model.json',
                       '/root/project/vc-lm/configs/nar_model.json')
-    output_wav = engine.process_audio('/root/autodl-tmp/data/vc-lm-tts/train/7479.wav',
-                                      '/root/autodl-tmp/data/vc-lm-tts/train/7479.wav')
+    output_wav = engine.process_audio('/root/notebook/data/shandong.wav',
+                                      '/root/autodl-tmp/data/vc-lm-tts-wavs/train/1760.wav')
     sf.write('output1.wav', output_wav,
              24000, subtype='PCM_16')
 
