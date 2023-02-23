@@ -2,11 +2,11 @@ import math
 import numpy as np
 import torch
 
-from streaming import StreamingDataset
+import webdataset as wds
 
 from vc_lm.utils.data_utils import pad_or_trim
 
-class NARDataset(StreamingDataset):
+class NARDataset(object):
     _MEL_SAMPLE_RATE = 100
     _CODE_SAMPLE_RATE = 75
     _NUM_Q = 8
@@ -16,18 +16,23 @@ class NARDataset(StreamingDataset):
     def __init__(self,
                  local,
                  remote=None,
+                 pattern=None,
                  max_audio_time=24,
                  style_audio_time=3,
-                 shuffle=False):
-        super().__init__(local, remote, shuffle=shuffle)
+                 shuffle=False,
+                 shuffle_buffer=2000):
+        self.local_path = local
         self.max_audio_time = max_audio_time
         self.style_audio_time = 3
         self.max_mel_len = int(self._MEL_SAMPLE_RATE * self._MAX_MEL_AUDIO_TIME)
         self.max_code_len = int(self._CODE_SAMPLE_RATE * self.max_audio_time)
         self.max_content_len = math.ceil(self.max_mel_len/2)
         self.style_code_len = int(self._CODE_SAMPLE_RATE * style_audio_time)
+        self.pattern = pattern
+        self.shuffle = shuffle
+        self.shuffle_buffer = shuffle_buffer
 
-    def __getitem__(self, idx: int):
+    def process_record(self, record):
         """
         return:
             {
@@ -37,7 +42,7 @@ class NARDataset(StreamingDataset):
                 "code_mask": (max_code_len,)
             }
         """
-        obj = super().__getitem__(idx)
+        obj = record['data.pyd']
         mel_len = obj['mel'].shape[1]
         # (max_content_len,)
         content_mask = torch.lt(torch.arange(0, self.max_content_len), math.ceil(mel_len//2)).type(torch.long)
@@ -57,9 +62,17 @@ class NARDataset(StreamingDataset):
         input_code = pad_or_trim(input_code, self.max_code_len,
                                  pad_value=self._PAD_ID)
         return {
-            'mel': mel,
+            'mel': torch.tensor(mel),
             'content_mask': content_mask,
-            'input_code': input_code,
+            'input_code': torch.tensor(input_code),
             'code_mask': code_mask,
-            'style_code': style_code
+            'style_code': torch.tensor(style_code)
         }
+
+    def get_dataset(self):
+        dataset = wds.WebDataset(self.local_path + '/' + self.pattern,
+                                 nodesplitter=wds.split_by_node)
+        if self.shuffle:
+            dataset = dataset.shuffle(self.shuffle_buffer)
+        dataset = dataset.decode().map(self.process_record)
+        return dataset

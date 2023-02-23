@@ -31,6 +31,7 @@ model:
     weight_decay: 0.0005
     warmup_step: 100
     max_iters: 800000
+
 data:
   class_path: vc_lm.datamodules.ar_datamodule.ARDataModule
   init_args:

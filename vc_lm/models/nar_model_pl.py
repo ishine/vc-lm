@@ -10,11 +10,15 @@ from torch.optim import Adam
 from vc_lm.models.base import VCLMConfig
 from vc_lm.models.models.nar_model import NARModel
 
+from vc_lm.models.misc import CosineWarmupScheduler
+
 
 class NARModelPL(pl.LightningModule):
     def __init__(self, config_file: str,
                  lr: float = 0.001,
-                 weight_decay: float = 0.0005):
+                 weight_decay: float = 0.0005,
+                 warmup_step: int = 10000,
+                 max_iters: int = 800000):
         super().__init__()
         self.save_hyperparameters()
         with open(config_file) as f:
@@ -105,6 +109,10 @@ class NARModelPL(pl.LightningModule):
         pass
 
     def configure_optimizers(self) -> Any:
-        return Adam(self.parameters(),
-                    lr=self.hparams.lr,
-                    weight_decay=self.hparams.weight_decay)
+        optimizer = Adam(self.parameters(),
+                         lr=self.hparams.lr,
+                         weight_decay=self.hparams.weight_decay)
+        scheduler = CosineWarmupScheduler(optimizer=optimizer,
+                                          warmup=self.hparams.warmup_step,
+                                          max_iters=self.hparams.max_iters)
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
