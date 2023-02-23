@@ -1,2 +1,6 @@
 pytorch-lightning=1.6.5
 jsonargparse[signatures]
+transformers==4.26.0
+git+https://github.com/openai/whisper.git
+einops
+torchaudio

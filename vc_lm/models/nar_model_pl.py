@@ -76,8 +76,8 @@ class NARModelPL(pl.LightningModule):
                       batch_idx: int):
         loss, preds, targets = self.step(batch)
         acc = self.train_accuracy(preds, targets)
-        self.log('train/loss', loss, on_step=False, on_epoch=True, prog_bar=False)
-        self.log('train/acc', acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('train/loss', loss, on_step=True, on_epoch=True, prog_bar=False)
+        self.log('train/acc', acc, on_step=True, on_epoch=True, prog_bar=True)
         return {
             'loss': loss,
             'preds': preds,
@@ -109,7 +109,18 @@ class NARModelPL(pl.LightningModule):
         pass
 
     def configure_optimizers(self) -> Any:
-        optimizer = Adam(self.parameters(),
+        no_decay = ["bias", "LayerNorm.weight"]
+        optimizer_grouped_parameters = [
+            {
+                "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay)],
+                "weight_decay": self.hparams.weight_decay,
+            },
+            {
+                "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay)],
+                "weight_decay": 0.0,
+            },
+        ]
+        optimizer = Adam(optimizer_grouped_parameters,
                          lr=self.hparams.lr,
                          weight_decay=self.hparams.weight_decay)
         scheduler = CosineWarmupScheduler(optimizer=optimizer,
