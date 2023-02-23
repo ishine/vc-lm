@@ -4,10 +4,10 @@ from vc_lm.datamodules.datasets.ar_dataset import ARDataset
 
 class TestARDataset(unittest.TestCase):
     def setUp(self) -> None:
-        self.dataset = ARDataset('/root/autodl-tmp/data/vc-lm-sample/train')
+        self.dataset = ARDataset('/home/jiangxinghua/data/vc-lm/wds/train')
 
     def test_ar_dataset(self):
-        item = next(iter(self.dataset))
+        item = next(iter(self.dataset.get_dataset()))
         self.assertTrue(True)
 
 if __name__ == '__main__':

@@ -2,8 +2,17 @@ import os
 from typing import Optional
 
 import pytorch_lightning as pl
-from torch.utils.data import Dataset, DataLoader
+import webdataset as wds
+from torch.utils.data import Dataset, DataLoader, default_collate
 from vc_lm.datamodules.datasets.ar_dataset import ARDataset
+
+from webdataset.utils import pytorch_worker_info
+
+def ar_collect_fn(x):
+    y = default_collate(x)
+    if '__key__' in y:
+        del y['__key__']
+    return y
 
 class ARDataModule(pl.LightningDataModule):
     def __init__(self,
@@ -11,6 +20,10 @@ class ARDataModule(pl.LightningDataModule):
                  batch_size: int = 64,
                  max_audio_time: float = 24,
                  num_workers: int = 0,
+                 train_dataset_size: int = -1,
+                 val_dataset_size: int = 200,
+                 train_pattern: str = None,
+                 val_pattern: str = None,
                  pin_memory: bool = False):
         super().__init__()
         self.data_dir = data_dir
@@ -21,6 +34,10 @@ class ARDataModule(pl.LightningDataModule):
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
+        self.train_dataset_size = train_dataset_size
+        self.val_dataset_size = val_dataset_size
+        self.train_pattern = train_pattern
+        self.val_pattern = val_pattern
 
     def prepare_data(self) -> None:
         pass
@@ -29,37 +46,34 @@ class ARDataModule(pl.LightningDataModule):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
         This method is called by lightning separately when using `trainer.fit()` and `trainer.test()`!
         The `stage` can be used to differentiate whether the `setup()` is called before trainer.fit()` or `trainer.test()`."""
-        if not self.data_train or not self.data_val or not self.data_test:
+        if self.data_train is None or self.data_val is None or self.data_test is None:
             self.data_train = ARDataset(os.path.join(self.data_dir, 'train'),
-                                        max_audio_time=self.max_audio_time, shuffle=True)
+                                        pattern=self.train_pattern,
+                                        max_audio_time=self.max_audio_time,
+                                        shuffle=True).get_dataset()
             self.data_val = ARDataset(os.path.join(self.data_dir, 'val'),
-                                      max_audio_time=self.max_audio_time)
+                                      pattern=self.val_pattern,
+                                      max_audio_time=self.max_audio_time).get_dataset()
             self.data_test = ARDataset(os.path.join(self.data_dir, 'test'),
-                                       max_audio_time=self.max_audio_time)
+                                       pattern=self.val_pattern,
+                                       max_audio_time=self.max_audio_time).get_dataset()
 
     def train_dataloader(self):
-        return DataLoader(
-            dataset=self.data_train,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            shuffle=False
-        )
+        return self.get_dataloader(self.data_train, self.train_dataset_size)
 
     def val_dataloader(self):
-        return DataLoader(
-            dataset=self.data_val,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            shuffle=False,
-        )
+        return self.get_dataloader(self.data_val, self.val_dataset_size)
 
     def test_dataloader(self):
-        return DataLoader(
-            dataset=self.data_test,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            shuffle=False
-        )
+        return self.get_dataloader(self.data_test, self.val_dataset_size)
+
+    def get_dataloader(self, dataset, dataset_size):
+        # batch
+        dataset = dataset.batched(self.batch_size, collation_fn=ar_collect_fn, partial=False)
+        _, world_size, _, _ = pytorch_worker_info()
+        number_of_batches = int(dataset_size // (world_size * self.batch_size))
+        loader = wds.WebLoader(dataset,
+                               batch_size=None,
+                               shuffle=False, num_workers=self.num_workers).with_length(number_of_batches).with_epoch(number_of_batches)
+        loader = loader.repeat(2).slice(number_of_batches)
+        return loader

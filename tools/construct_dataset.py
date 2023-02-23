@@ -15,7 +15,7 @@ import torch
 
 from whisper.audio import log_mel_spectrogram
 
-from streaming import MDSWriter
+import webdataset as wds
 
 def get_code_list(audio_list: List[str],
                   gpu_id: int = 0):
@@ -32,19 +32,27 @@ def get_code_list(audio_list: List[str],
 def get_code(audio: str,
              device: str,
              model: Any):
-    wav, sr = torchaudio.load(audio)
-    wav = convert_audio(wav, sr, model.sample_rate, model.channels)
-    wav = wav.unsqueeze(0)
-    wav = wav.cuda(device)
-    # Extract discrete codes from EnCodec
-    with torch.no_grad():
-        encoded_frames = model.encode(wav)
-    code = torch.cat([encoded[0] for encoded in encoded_frames], dim=-1)  # [B, n_q, T]
-    return code.cpu().numpy().astype(np.int16)[0]
+    try:
+        wav, sr = torchaudio.load(audio)
+        wav = convert_audio(wav, sr, model.sample_rate, model.channels)
+        wav = wav.unsqueeze(0)
+        wav = wav.cuda(device)
+        # Extract discrete codes from EnCodec
+        with torch.no_grad():
+            encoded_frames = model.encode(wav)
+        code = torch.cat([encoded[0] for encoded in encoded_frames], dim=-1)  # [B, n_q, T]
+        return code.cpu().numpy().astype(np.int16)[0]
+    except:
+        print(f'{audio} code error...')
+        return None
 
 def get_mel_spectrogram(audio):
-    mel = log_mel_spectrogram(audio)
-    return mel.numpy()
+    try:
+        mel = log_mel_spectrogram(audio)
+        return mel.numpy()
+    except:
+        print(f'{audio} mel error...')
+        return None
 
 def process_audios(audios: List[str],
                    num_workers: int):
@@ -80,19 +88,20 @@ def construct_dataset(input_dir,
                       num_workers=10):
     os.makedirs(output_dir, exist_ok=True)
     input_files = glob.glob(f"{input_dir}/**/*.wav", recursive=True)
-    columns = {
-        'mel': 'pkl',
-        'code': 'pkl'
-    }
-    # Shard compression, if any
-    compression = 'zstd'
 
-    with MDSWriter(output_dir, columns, compression, size_limit=1 << 31) as out:
+    with wds.ShardWriter(os.path.join(output_dir, 'shard-%06d.tar'),
+                         maxcount=10000000, maxsize=1<<32) as sink:
+        index = 0
         for partition_start in tqdm(range(0, len(input_files), partition_size)):
             audios = input_files[partition_start:partition_start+partition_size]
             records = process_audios(audios, num_workers=num_workers)
             for record in records:
-                out.write(record)
+                if record['mel'] is not None and record['code'] is not None:
+                    sink.write({
+                        '__key__': "%011d" % index,
+                        'data.pyd': record})
+                    index += 1
+    print(f'records number: {index}')
 
 
 if __name__ == '__main__':

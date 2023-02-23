@@ -1,15 +1,17 @@
 seed_everything: 42
 trainer:
   logger: true
-  default_root_dir: "/root/autodl-tmp/models/vclm-nar"
+  default_root_dir: "/root/autodl-tmp/models/vclm-nar-test"
   accelerator: gpu
+  accumulate_grad_batches: 12
+  precision: 16
   callbacks:
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
         monitor: "val/loss" # name of the logged metric which determines when model is improving
         mode: "min" # can be "max" or "min"
         save_top_k: 2 # save k best models (determined by above metric)
-        save_last: False # additionaly always save model from last epoch
+        save_last: True # additionaly always save model from last epoch
         verbose: True
         dirpath: "/root/autodl-tmp/models/vclm-nar"
         filename: "epoch_{epoch:03d}"
@@ -20,7 +22,7 @@ model:
   class_path: vc_lm.models.nar_model_pl.NARModelPL
   init_args:
     config_file: /root/project/vc-lm/configs/nar_model.json
-    lr: 0.00005
+    lr: 0.0005
     weight_decay: 0.0005
 data:
   class_path: vc_lm.datamodules.nar_datamodule.NARDataModule
