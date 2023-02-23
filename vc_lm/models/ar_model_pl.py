@@ -105,6 +105,6 @@ class ARModelPL(pl.LightningModule):
                          lr=self.hparams.lr,
                          weight_decay=self.hparams.weight_decay)
         scheduler = CosineWarmupScheduler(optimizer=optimizer,
-                                          warmup=self.hparams.warmup,
+                                          warmup=self.hparams.warmup_step,
                                           max_iters=self.hparams.max_iters)
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]

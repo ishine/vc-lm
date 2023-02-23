@@ -19,13 +19,17 @@ trainer:
         filename: "epoch_{epoch}_{step}"
         auto_insert_metric_name: False
         every_n_train_steps: 500
+    - class_path: pytorch_lightning.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: step
+
 model:
   class_path: vc_lm.models.ar_model_pl.ARModelPL
   init_args:
     config_file: configs/ar_model.json
-    lr: 0.00005
+    lr: 0.01
     weight_decay: 0.0005
-    warmup_step: 10000
+    warmup_step: 100
     max_iters: 800000
 data:
   class_path: vc_lm.datamodules.ar_datamodule.ARDataModule
