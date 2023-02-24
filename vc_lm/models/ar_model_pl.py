@@ -23,6 +23,9 @@ class ARModelPL(pl.LightningModule):
             config = json.load(f)
         config = VCLMConfig(**config)
         self.model = ARModelForConditionalGeneration(config)
+        # 加载whisper模型参数.
+        self.model.model.encoder.load_pretrained_whisper_params()
+
         self.loss_fct = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass",
                                        num_classes=self.model.model.shared.num_embeddings,

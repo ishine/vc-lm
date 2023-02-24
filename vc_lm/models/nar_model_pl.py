@@ -25,6 +25,8 @@ class NARModelPL(pl.LightningModule):
             config = json.load(f)
         config = VCLMConfig(**config)
         self.model = NARModel(config)
+        # load whisper parameter
+        self.model.encoder.load_pretrained_whisper_params()
         self.loss_fct = nn.CrossEntropyLoss()
         self.train_accuracy = Accuracy(task="multiclass",
                                        num_classes=self.model.shared.num_embeddings,

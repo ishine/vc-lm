@@ -1,4 +1,6 @@
 import torch
+import math
+import random
 from torch import nn
 from typing import List, Optional, Union, Tuple
 
@@ -18,6 +20,78 @@ from transformers.modeling_outputs import (
     Seq2SeqSequenceClassifierOutput,
 )
 
+from vc_lm.models.bart.modeling_bart import BartLearnedPositionalEmbedding, BartEncoderLayer, _expand_mask
+from vc_lm.datamodules.datasets.ar_dataset import ARDataset
+
+class ContentEncoder(VCLMPretrainedModel):
+    def __init__(self, config: VCLMConfig):
+        super().__init__(config)
+
+        self.dropout = config.dropout
+        self.layerdrop = config.encoder_layerdrop
+
+        embed_dim = config.d_model
+        self.padding_idx = config.pad_token_id
+        self.max_source_positions = 1500
+
+        self.embed_positions = BartLearnedPositionalEmbedding(
+            self.max_source_positions,
+            embed_dim,
+        )
+        self.layers = nn.ModuleList([BartEncoderLayer(config) for _ in range(config.content_layer_num)])
+        self.layernorm_embedding = nn.LayerNorm(embed_dim)
+
+        self.gradient_checkpointing = False
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def forward(self,
+                inputs: torch.FloatTensor = None,
+                attention_mask: Optional[torch.Tensor] = None):
+        embed_pos = self.embed_positions(inputs)
+        embed_pos = embed_pos.to(inputs.device)
+
+        hidden_states = inputs + embed_pos
+        hidden_states = self.layernorm_embedding(hidden_states)
+        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
+
+        # expand attention_mask
+        if attention_mask is not None:
+            # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
+            attention_mask = _expand_mask(attention_mask, inputs.dtype)
+
+        for idx, encoder_layer in enumerate(self.layers):
+            # add LayerDrop (see https://arxiv.org/abs/1909.11556 for description)
+            dropout_probability = random.uniform(0, 1)
+            if self.training and (dropout_probability < self.layerdrop):  # skip the layer
+                layer_outputs = (None, None)
+            else:
+                if self.gradient_checkpointing and self.training:
+
+                    def create_custom_forward(module):
+                        def custom_forward(*inputs):
+                            return module(*inputs, output_attention=None)
+
+                        return custom_forward
+
+                    layer_outputs = torch.utils.checkpoint.checkpoint(
+                        create_custom_forward(encoder_layer),
+                        hidden_states,
+                        attention_mask,
+                        None,
+                    )
+                else:
+                    layer_outputs = encoder_layer(
+                        hidden_states,
+                        attention_mask,
+                        layer_head_mask=None,
+                        output_attentions=None,
+                    )
+
+                hidden_states = layer_outputs[0]
+        return hidden_states
+
+
 class WhisperEncoder(VCLMPretrainedModel):
     """
     Transformer encoder consisting of *config.encoder_layers* self attention layers. Each layer is a
@@ -35,14 +109,21 @@ class WhisperEncoder(VCLMPretrainedModel):
                                           n_state=checkpoint['dims']['n_audio_state'],
                                           n_head=checkpoint['dims']['n_audio_head'],
                                           n_layer=checkpoint['dims']['n_audio_layer'])
-        self.audio_encoder.load_state_dict(checkpoint['model_state_dict'])
-
+        if config.content_layer_num > 0:
+            self.content_encoder = ContentEncoder(config)
+        else:
+            self.content_encoder = None
+        self.load_pretrained_whisper_params()
 
     def get_input_embeddings(self):
         return self.embed_tokens
 
     def set_input_embeddings(self, value):
         self.embed_tokens = value
+
+    def load_pretrained_whisper_params(self):
+        checkpoint = torch.load(self.config.encoder_model_path)
+        self.audio_encoder.load_state_dict(checkpoint['model_state_dict'])
 
     def forward(
         self,
@@ -92,13 +173,16 @@ class WhisperEncoder(VCLMPretrainedModel):
 
         hidden_states = self.audio_encoder.forward(input_ids)
 
+        if self.content_encoder is not None:
+            hidden_states = self.content_encoder(hidden_states, attention_mask=attention_mask)
+
         if not return_dict:
             return tuple(v for v in [hidden_states, hidden_states, attention_mask] if v is not None)
         return BaseModelOutput(
             last_hidden_state=hidden_states, hidden_states=hidden_states, attentions=attention_mask
         )
 
-    def freeze(self) -> None:
+    def freeze(self, only_whisper=False) -> None:
         r"""
         Freeze all params for inference.
 
@@ -108,10 +192,14 @@ class WhisperEncoder(VCLMPretrainedModel):
             model.freeze()
 
         """
-        for param in self.parameters():
-            param.requires_grad = False
-
-        self.eval()
+        if only_whisper:
+            for param in self.audio_encoder.parameters():
+                param.requires_grad = False
+            self.audio_encoder.eval()
+        else:
+            for param in self.parameters():
+                param.requires_grad = False
+            self.eval()
 
     def unfreeze(self) -> None:
         """Unfreeze all parameters for training.

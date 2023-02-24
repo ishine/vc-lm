@@ -41,7 +41,7 @@ class ARModel(VCLMPretrainedModel):
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
 
         self.encoder = WhisperEncoder(config)
-        self.encoder.freeze()
+        self.encoder.freeze(only_whisper=True)
         self.decoder = ARDecoder(config, self.shared)
         # Initialize weights and apply final processing
         self.post_init()
