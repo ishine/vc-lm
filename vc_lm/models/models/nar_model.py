@@ -47,7 +47,8 @@ class NARModel(VCLMPretrainedModel):
         nar_stage: torch.LongTensor = None):
 
         if encoder_outputs is None:
-            encoder_outputs = self.encoder(input_ids)
+            encoder_outputs = self.encoder(input_ids,
+                                           attention_mask=attention_mask)
         # decoder outputs consists of (dec_features, past_key_value, dec_hidden, dec_attn)
         # （batch_size, target_len, dims）
         decoder_outputs = self.decoder(

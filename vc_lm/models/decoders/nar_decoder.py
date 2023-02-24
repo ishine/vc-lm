@@ -221,5 +221,6 @@ class NARDecoder(VCLMPretrainedModel):
                     nar_stage=nar_stage
                 )
             hidden_states = layer_outputs[0]
+
         # extract code hidden_states
         return hidden_states[:, self.config.style_length:]
