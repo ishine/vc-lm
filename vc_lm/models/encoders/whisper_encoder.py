@@ -109,7 +109,7 @@ class WhisperEncoder(VCLMPretrainedModel):
                                           n_state=checkpoint['dims']['n_audio_state'],
                                           n_head=checkpoint['dims']['n_audio_head'],
                                           n_layer=checkpoint['dims']['n_audio_layer'])
-        if config.content_layer_num > 0:
+        if config.content_layer_num >= 0:
             self.content_encoder = ContentEncoder(config)
         else:
             self.content_encoder = None

@@ -1,5 +1,5 @@
 {
-  "content_layer_num": 4,
+  "content_layer_num": -1,
   "n_q": 8,
   "q_size": 1024,
   "vocab_size": 8195,
