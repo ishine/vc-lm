@@ -5,11 +5,14 @@ import json
 from typing import Any, List
 from torch import nn
 from torchmetrics.classification.accuracy import Accuracy
-from torch.optim import Adam
+from torch.optim import AdamW
 
 from vc_lm.models.base import VCLMConfig
 from vc_lm.models.models.ar_model import ARModel, ARModelForConditionalGeneration
 from vc_lm.models.misc import CosineWarmupScheduler
+
+from transformers.optimization import get_polynomial_decay_schedule_with_warmup
+
 
 class ARModelPL(pl.LightningModule):
     def __init__(self, config_file: str,
@@ -39,6 +42,15 @@ class ARModelPL(pl.LightningModule):
                                       num_classes=self.model.model.shared.num_embeddings,
                                       average='micro',
                                       ignore_index=-100)
+
+    def load_bart_decoder_params(self):
+        decoder = self.model.model.decoder
+        bart_state_dict = torch.load('/root/autodl-tmp/pretrained-models/bart-large/pytorch_model.bin')
+        filtered_state_dict = {}
+        for k, v in bart_state_dict.items():
+            if 'decoder.layers' in k:
+                filtered_state_dict[".".join(k.split('.')[1:])] = v
+        decoder.load_state_dict(filtered_state_dict, strict=False)
 
     def forward(self,
                 input_mels=None,
@@ -115,10 +127,14 @@ class ARModelPL(pl.LightningModule):
                 "weight_decay": 0.0,
             },
         ]
-        optimizer = Adam(optimizer_grouped_parameters,
-                         lr=self.hparams.lr,
-                         weight_decay=self.hparams.weight_decay)
-        scheduler = CosineWarmupScheduler(optimizer=optimizer,
-                                          warmup=self.hparams.warmup_step,
-                                          max_iters=self.hparams.max_iters)
+        optimizer = AdamW(optimizer_grouped_parameters,
+                          lr=self.hparams.lr,
+                          weight_decay=self.hparams.weight_decay)
+        # scheduler = CosineWarmupScheduler(optimizer=optimizer,
+        #                                   warmup=self.hparams.warmup_step,
+        #                                   max_iters=self.hparams.max_iters)
+        scheduler = get_polynomial_decay_schedule_with_warmup(optimizer=optimizer,
+                                                              num_warmup_steps=self.hparams.warmup_step,
+                                                              num_training_steps=self.hparams.max_iters)
+
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]

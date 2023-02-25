@@ -3,22 +3,25 @@ trainer:
   logger: true
   default_root_dir: "/root/autodl-tmp/models/ar"
   accelerator: gpu
-  devices: 1
-  strategy: ddp
-  accumulate_grad_batches: 2
+  devices: 2
+  strategy: ddp_find_unused_parameters_false
+  accumulate_grad_batches: 3
   precision: 16
-  check_val_every_n_epoch: 1
-  max_steps: 100000
+  val_check_interval: 1000
+  max_steps: 300000
+  gradient_clip_val: 0.5
   callbacks:
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
-        #save_top_k: 2 # save k best models (determined by above metric)
+        save_top_k: 3 # save k best models (determined by above metric)
+        monitor: 'val/loss'
+        mode: 'min'
         save_last: True # additionaly always save model from last epoch
         verbose: True
         dirpath: "/root/autodl-tmp/models/ar"
         filename: "epoch_{epoch}_{step}"
         auto_insert_metric_name: False
-        every_n_train_steps: 10000
+        every_n_train_steps: 1000
     - class_path: pytorch_lightning.callbacks.LearningRateMonitor
       init_args:
         logging_interval: step
@@ -27,21 +30,21 @@ model:
   class_path: vc_lm.models.ar_model_pl.ARModelPL
   init_args:
     config_file: configs/ar_model.json
-    lr: 0.001
-    weight_decay: 0.001
-    warmup_step: 100
-    max_iters: 30000
+    lr: 0.0005
+    weight_decay: 0.01
+    warmup_step: 30000
+    max_iters: 300000
 
 data:
   class_path: vc_lm.datamodules.ar_datamodule.ARDataModule
   init_args:
     data_dir: "/root/autodl-tmp/data/wds"
-    batch_size: 12
+    batch_size: 8
     max_audio_time: 24
     num_workers: 2
     # 2262692
-    train_dataset_size: 1500
-    train_pattern: "shard-{000000..000007}.tar"
-    val_dataset_size: 10
-    val_pattern: "shard-{000000..000000}.tar"
+    train_dataset_size: 2262692
+    train_pattern: "shard-{000000..000019}.tar"
+    val_dataset_size: 800
+    val_pattern: "shard-{000000..000009}.tar"
 
