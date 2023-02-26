@@ -81,11 +81,12 @@ class NARModelPL(pl.LightningModule):
         acc = self.train_accuracy(preds, targets)
         self.log('train/loss', loss, on_step=True, on_epoch=True, prog_bar=False)
         self.log('train/acc', acc, on_step=True, on_epoch=True, prog_bar=True)
-        return {
-            'loss': loss,
-            'preds': preds,
-            'targets': targets
-        }
+        # return {
+        #     'loss': loss,
+        #     'preds': preds,
+        #     'targets': targets
+        # }
+        return {'loss': loss}
 
     def training_epoch_end(self, outputs: List[Any]):
         pass
@@ -95,7 +96,8 @@ class NARModelPL(pl.LightningModule):
         acc = self.val_accuracy(preds, targets)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
         self.log("val/acc", acc, on_step=False, on_epoch=True, prog_bar=True)
-        return {"loss": loss, "preds": preds, "targets": targets}
+        #return {"loss": loss, "preds": preds, "targets": targets}
+        return {'loss': loss}
 
     def validation_epoch_end(self, outputs: List[Any]):
         pass
@@ -106,7 +108,8 @@ class NARModelPL(pl.LightningModule):
         acc = self.test_accuracy(preds, targets)
         self.log("test/loss", loss, on_step=False, on_epoch=True)
         self.log("test/acc", acc, on_step=False, on_epoch=True)
-        return {"loss": loss, "preds": preds, "targets": targets}
+        #return {"loss": loss, "preds": preds, "targets": targets}
+        return {'loss': loss}
 
     def test_epoch_end(self, outputs: List[Any]):
         pass

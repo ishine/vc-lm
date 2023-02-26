@@ -1,15 +1,16 @@
 seed_everything: 42
 trainer:
+  resume_from_checkpoint: /root/autodl-tmp/models/ar/last.ckpt
   logger: true
   default_root_dir: "/root/autodl-tmp/models/ar"
   accelerator: gpu
-  devices: 2
+  devices: 3
   strategy: ddp_find_unused_parameters_false
-  accumulate_grad_batches: 3
+  accumulate_grad_batches: 2
   precision: 16
   val_check_interval: 1000
   max_steps: 300000
-  gradient_clip_val: 0.5
+  gradient_clip_val: 1.0
   callbacks:
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
@@ -39,12 +40,12 @@ data:
   class_path: vc_lm.datamodules.ar_datamodule.ARDataModule
   init_args:
     data_dir: "/root/autodl-tmp/data/wds"
-    batch_size: 8
+    batch_size: 10
     max_audio_time: 24
     num_workers: 2
     # 2262692
     train_dataset_size: 2262692
-    train_pattern: "shard-{000000..000019}.tar"
+    train_pattern: "shard-{000000..000290}.tar"
     val_dataset_size: 800
     val_pattern: "shard-{000000..000009}.tar"
 

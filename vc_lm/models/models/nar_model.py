@@ -45,7 +45,6 @@ class NARModel(VCLMPretrainedModel):
         encoder_outputs: Optional[List[torch.FloatTensor]] = None,
         style_code: torch.LongTensor = None,
         nar_stage: torch.LongTensor = None):
-
         if encoder_outputs is None:
             encoder_outputs = self.encoder(input_ids,
                                            attention_mask=attention_mask)

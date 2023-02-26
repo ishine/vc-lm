@@ -113,6 +113,11 @@ class WhisperEncoder(VCLMPretrainedModel):
             self.content_encoder = ContentEncoder(config)
         else:
             self.content_encoder = None
+        #
+        self.linear1 = nn.Linear(config.d_model, 256)
+        self.activate_fn = nn.GELU()
+        self.linear2 = nn.Linear(256, config.d_model)
+
         self.load_pretrained_whisper_params()
 
     def get_input_embeddings(self):
@@ -175,6 +180,11 @@ class WhisperEncoder(VCLMPretrainedModel):
 
         if self.content_encoder is not None:
             hidden_states = self.content_encoder(hidden_states, attention_mask=attention_mask)
+        # project
+        hidden_states = self.linear1(hidden_states)
+        hidden_states = self.activate_fn(hidden_states)
+        hidden_states = self.linear2(hidden_states)
+        #
 
         if not return_dict:
             return tuple(v for v in [hidden_states, hidden_states, attention_mask] if v is not None)
