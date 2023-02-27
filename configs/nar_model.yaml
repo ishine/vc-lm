@@ -1,6 +1,5 @@
 seed_everything: 42
 trainer:
-  resume_from_checkpoint: /root/autodl-tmp/models/nar/last.ckpt
   logger: true
   default_root_dir: "/root/autodl-tmp/models/nar"
   accelerator: gpu
@@ -10,7 +9,7 @@ trainer:
   precision: 16
   val_check_interval: 1000
   max_steps: 300000
-  gradient_clip_val: 1.0
+  gradient_clip_val: 0.5
   callbacks:
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
@@ -31,7 +30,7 @@ model:
   class_path: vc_lm.models.nar_model_pl.NARModelPL
   init_args:
     config_file: configs/nar_model.json
-    lr: 0.0005
+    lr: 0.0002
     weight_decay: 0.01
     warmup_step: 30000
     max_iters: 300000

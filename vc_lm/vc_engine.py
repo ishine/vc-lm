@@ -55,6 +55,7 @@ class VCEngine(object):
         return outputs[0, style_code_len:total_code_len]
 
     def process_nar(self, content_mel, style_code, codes_0):
+        style_code = style_code[:, 0:75 * 3]
         # codes_0: (code_len,)
         mel_len = content_mel.shape[1]
         content_mask = torch.lt(torch.arange(0, self.max_content_len), math.ceil(mel_len//2)).type(torch.long).cuda()
@@ -87,19 +88,22 @@ class VCEngine(object):
         full_codes = torch.stack(codes_list, 0)
         return full_codes
 
-    def process_audio(self, content_audio: str, style_audio: str):
+    def process_audio(self, content_audio: str, style_audio: str,
+                      max_style_len=3, max_content_len=15, use_ar=True):
         dtype = torch.float32
         # (80, content_mel_len)
-        content_mel = torch.tensor(get_mel_spectrogram(content_audio), dtype=dtype).cuda()
+        content_mel = torch.tensor(get_mel_spectrogram(content_audio), dtype=dtype).cuda()[:, 0:100 * max_content_len]
         # (n_q, content_code_len)
-        content_code = torch.tensor(get_code(content_audio, 'cuda:0', self.encodec_model), dtype=torch.int64).cuda()
+        content_code = torch.tensor(get_code(content_audio, 'cuda:0', self.encodec_model), dtype=torch.int64).cuda()[:, 0:75 * max_content_len]
         # (80, style_mel_len)
-        style_mel = torch.tensor(get_mel_spectrogram(style_audio), dtype=dtype).cuda()[:, 0:3*100]
+        style_mel = torch.tensor(get_mel_spectrogram(style_audio), dtype=dtype).cuda()[:, 0:100 * max_style_len]
         # (n_q, style_code_len)
-        style_code = torch.tensor(get_code(style_audio, 'cuda:0', self.encodec_model), dtype=torch.int64).cuda()[:, 0:3*75]
+        style_code = torch.tensor(get_code(style_audio, 'cuda:0', self.encodec_model), dtype=torch.int64).cuda()[:, 0:75 * max_style_len]
         # Process ARModel
-        codes_0 = self.process_ar(content_mel, content_code, style_mel, style_code)
-        # codes_0 = content_code[0]
+        if use_ar:
+            codes_0 = self.process_ar(content_mel, content_code, style_mel, style_code)
+        else:
+            codes_0 = content_code[0]
         # Process NARModel
         full_codes = self.process_nar(content_mel, style_code, codes_0)
         # Decode encodec

@@ -114,7 +114,7 @@ class WhisperEncoder(VCLMPretrainedModel):
         else:
             self.content_encoder = None
         #
-        self.linear1 = nn.Linear(config.d_model, 256)
+        self.linear1 = nn.Linear(checkpoint['dims']['n_audio_state'], 256)
         self.activate_fn = nn.GELU()
         self.linear2 = nn.Linear(256, config.d_model)
 

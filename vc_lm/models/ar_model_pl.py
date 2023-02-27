@@ -30,6 +30,14 @@ class ARModelPL(pl.LightningModule):
         self.model.model.encoder.load_pretrained_whisper_params()
 
         self.loss_fct = nn.CrossEntropyLoss()
+
+        # loaded_state = {
+        #     k: v
+        #     for k, v in torch.load('/root/autodl-tmp/models/ar1/epoch_0_26000.ckpt')['state_dict'].items() if not 'model.model.encoder' in k
+        # }
+        # self.load_state_dict(loaded_state,
+        #                      strict=False)
+
         self.train_accuracy = Accuracy(task="multiclass",
                                        num_classes=self.model.model.shared.num_embeddings,
                                        average='micro',
