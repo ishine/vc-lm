@@ -75,5 +75,5 @@ class ARDataModule(pl.LightningDataModule):
         loader = wds.WebLoader(dataset,
                                batch_size=None,
                                shuffle=False, num_workers=self.num_workers).with_length(number_of_batches).with_epoch(number_of_batches)
-        loader = loader.repeat(20).slice(number_of_batches)
+        loader = loader.repeat(2).slice(number_of_batches)
         return loader
