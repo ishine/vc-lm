@@ -31,13 +31,9 @@ class ARModelPL(pl.LightningModule):
 
         self.loss_fct = nn.CrossEntropyLoss()
 
-        # loaded_state = torch.load('/root/autodl-tmp/models/ar.ckpt')['state_dict']
-        # for k, v in list(loaded_state.items()):
-        #     if 'audio_encoder' in k:
-        #         del loaded_state[k]
+        # loaded_state = torch.load('/root/autodl-tmp/vc-models/ar.ckpt')['state_dict']
         # self.load_state_dict(loaded_state,
         #                      strict=False)
-        # self.model.model.encoder.freeze(only_whisper=False)
 
         self.train_accuracy = Accuracy(task="multiclass",
                                        num_classes=self.model.model.shared.num_embeddings,

@@ -184,7 +184,9 @@ class WhisperEncoder(VCLMPretrainedModel):
         hidden_states = self.linear1(hidden_states)
         hidden_states = self.activate_fn(hidden_states)
         hidden_states = self.linear2(hidden_states)
-        #
+        # #
+        # hidden_states = torch.zeros_like(hidden_states, device=hidden_states.device) * hidden_states
+        # #
 
         if not return_dict:
             return tuple(v for v in [hidden_states, hidden_states, attention_mask] if v is not None)

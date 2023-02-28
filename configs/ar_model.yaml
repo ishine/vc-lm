@@ -1,5 +1,6 @@
 seed_everything: 42
 trainer:
+  resume_from_checkpoint: "/root/autodl-tmp/models/ar/epoch_0_5000.ckpt"
   logger: true
   default_root_dir: "/root/autodl-tmp/models/ar"
   accelerator: gpu
