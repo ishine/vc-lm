@@ -30,12 +30,13 @@ class NARModelPL(pl.LightningModule):
         self.model.encoder.load_pretrained_whisper_params()
         self.loss_fct = nn.CrossEntropyLoss()
 
-        # loaded_state = {
-        #     k: v
-        #     for k, v in torch.load('/root/autodl-tmp/models/nar1/epoch_0_28000.ckpt')['state_dict'].items() if not 'model.encoder' in k
-        # }
+        # loaded_state = torch.load('/root/autodl-tmp/models/nar.ckpt')['state_dict']
+        # for k, v in list(loaded_state.items()):
+        #     if 'audio_encoder' in k:
+        #         del loaded_state[k]
         # self.load_state_dict(loaded_state,
         #                      strict=False)
+        # self.model.encoder.freeze(only_whisper=False)
 
         self.train_accuracy = Accuracy(task="multiclass",
                                        num_classes=self.model.shared.num_embeddings,

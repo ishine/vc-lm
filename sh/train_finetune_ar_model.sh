@@ -1,0 +1,1 @@
+python run.py fit --config configs/finetune_ar_model.yaml

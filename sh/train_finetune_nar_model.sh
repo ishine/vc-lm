@@ -1,0 +1,1 @@
+python run.py fit --config configs/finetune_nar_model.yaml
