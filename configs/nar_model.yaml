@@ -1,11 +1,12 @@
 seed_everything: 42
 trainer:
+  #resume_from_checkpoint: "/root/autodl-tmp/models/nar/last1.ckpt"
   logger: true
   default_root_dir: "/root/autodl-tmp/models/nar"
   accelerator: gpu
-  devices: 6
+  devices: 1
   strategy: ddp_find_unused_parameters_false
-  accumulate_grad_batches: 2
+  accumulate_grad_batches: 3
   precision: 16
   val_check_interval: 1000
   max_steps: 300000
@@ -30,20 +31,20 @@ model:
   class_path: vc_lm.models.nar_model_pl.NARModelPL
   init_args:
     config_file: configs/nar_model.json
-    lr: 0.0002
+    lr: 0.00002
     weight_decay: 0.01
-    warmup_step: 30000
-    max_iters: 300000
+    warmup_step: 150
+    max_iters: 60000
 
 data:
   class_path: vc_lm.datamodules.nar_datamodule.NARDataModule
   init_args:
     data_dir: "/root/autodl-tmp/data/wds"
-    batch_size: 4
+    batch_size: 8
     max_audio_time: 24
     num_workers: 2
     # 2262692
-    train_dataset_size: 2262692
-    train_pattern: "shard-{000000..000290}.tar"
+    train_dataset_size: 1262692
+    train_pattern: "shard-{000100..000290}.tar"
     val_dataset_size: 800
     val_pattern: "shard-{000000..000009}.tar"

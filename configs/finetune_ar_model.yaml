@@ -1,6 +1,6 @@
 seed_everything: 42
 trainer:
-  #resume_from_checkpoint: "/root/autodl-tmp/models/lyh-ar/epoch_52_2900.ckpt"
+  resume_from_checkpoint: "/root/autodl-tmp/models/lyh-ar/last.ckpt"
   logger: true
   default_root_dir: "/root/autodl-tmp/models/lyh-ar"
   accelerator: gpu
@@ -14,7 +14,7 @@ trainer:
   callbacks:
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
-        save_top_k: 3 # save k best models (determined by above metric)
+        save_top_k: 1 # save k best models (determined by above metric)
         monitor: 'val/loss'
         mode: 'min'
         save_last: True # additionaly always save model from last epoch
@@ -31,7 +31,7 @@ model:
   class_path: vc_lm.models.ar_model_pl.ARModelPL
   init_args:
     config_file: configs/ar_model.json
-    lr: 0.00001
+    lr: 0.00002
     weight_decay: 0.01
     warmup_step: 100
     max_iters: 300000
@@ -40,12 +40,12 @@ data:
   class_path: vc_lm.datamodules.ar_datamodule.ARDataModule
   init_args:
     data_dir: "/root/autodl-tmp/data/lyh-p-wds"
-    batch_size: 10
+    batch_size: 4
     max_audio_time: 24
     num_workers: 1
     # 2262692
-    train_dataset_size: 2180
-    train_pattern: "shard-{000000..000000}.tar"
+    train_dataset_size: 11826
+    train_pattern: "shard-{000000..000001}.tar"
     val_dataset_size: 8
     val_pattern: "shard-{000000..000000}.tar"
 

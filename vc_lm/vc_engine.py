@@ -213,6 +213,7 @@ class VCEngineDataFactory(object):
         codes_0 = self.process_ar(content_mel, content_code, style_mel, style_code)
         # Process NARModel
         full_codes = self.process_nar(content_mel, style_code, codes_0)
+        code_alpha = full_codes.unsqueeze(0).detach()
         # Decode encodec
         with torch.no_grad():
             outputs = self.encodec_model.decode([(full_codes.unsqueeze(0), None)])
@@ -223,5 +224,16 @@ class VCEngineDataFactory(object):
             'mel': mel1,
             'code': code1,
             'mel_alpha': mel1_alpha,
-            'wav_alpha': wav0_gen
+            'wav_alpha': wav0_gen,
+            'code_alpha': code_alpha[0]
         }
+
+    def process_multistep_audio(self, mel1, code1, mel2, code2, max_style_len=3, max_content_len=21,
+                                step_num=3):
+        mel_alpha, code_alpha = mel1, code1
+        outputs_list = []
+        for i in range(step_num):
+            outputs = self.process_audio(mel_alpha, code_alpha, mel2, code2, max_style_len, max_content_len)
+            mel_alpha, code_alpha = outputs['mel_alpha'], outputs['code_alpha']
+            outputs_list.append(outputs)
+        return outputs_list
