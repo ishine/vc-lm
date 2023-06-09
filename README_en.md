@@ -3,6 +3,9 @@
 
 vc-lm is a project that can transform anyone's voice into thousands of different voices in audio.
 
+## 🔄 What‘s new
+* [2023/06/09] Support Any-to-One voice conversion model.
+
 ## Algorithm Architecture
 This project references the paper [Vall-E](https://arxiv.org/abs/2301.02111)
 
@@ -31,12 +34,13 @@ Output: Target audio with k+1 level tokens
 ## Dataset Construction
 
 ```
+# All WAV files are first processed into files with a length of 10 to 24 seconds. Reference to[[tools/construct_wavs_file.py]
 python tools/construct_dataset.py
 ```
 ## Convert Whisper Encoder Model
 
 ```
-python tools/extract_whisper_encoder_model.py --input_model=../whisper/small.pt --output_model=../whisper-encoder/small-encoder.pt
+python tools/extract_whisper_encoder_model.py --input_model=../whisper/medium.pt --output_model=../whisper-encoder/medium-encoder.pt
 ```
 ## Training
 ```
@@ -78,4 +82,29 @@ Extract code: 4kao
 ---
 ```
 This project's models can generate a large number of one-to-any parallel data (i.e., any-to-one). These parallel data can be used to train any-to-one voice conversion models.
+```
+## Training Any-to-One VC Model
+The target speaker's data achieves excellent results in just 10 minutes.
+
+### Constructing Any-to-One Parallel Data
+```
+# Construct train, val, test data
+python tools.construct_parallel_dataset.py
+```
+### Training
+Load the pre-trained model mentioned above and train it on the specified speaker's data.
+```
+bash ./sh/train_finetune_ar_model.sh
+bash ./sh/train_finetune_nar_model.sh
+```
+
+### Inference
+```
+from vc_lm.vc_engine import VCEngine
+engine = VCEngine('/root/autodl-tmp/vc-models/jr-ar.ckpt',
+                  '/root/autodl-tmp/vc-models/jr-nar.ckpt',
+                  '/root/project/vc-lm/configs/ar_model.json',
+                  '/root/project/vc-lm/configs/nar_model.json')
+output_wav = engine.process_audio(content_wav,
+                                  style_wav, max_style_len=3, use_ar=True)           
 ```

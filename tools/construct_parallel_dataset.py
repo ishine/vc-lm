@@ -1,17 +1,23 @@
 import webdataset as wds
-
+import fire
+import os
 from vc_lm.vc_engine import VCEngineDataFactory
 from tqdm.auto import tqdm
 import numpy as np
 
-def process_records(record_list, device_id=0):
+def process_records(record_list,
+                    device_id=0,
+                    ar_model_path='/root/autodl-tmp/vc-models/ar-1024.ckpt',
+                    nar_model_path='/root/autodl-tmp/vc-models/nar-1024.ckpt',
+                    ar_config_file='configs/ar_model.json',
+                    nar_config_file='configs/nar_model.json'):
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device_id)
     device_id = 0
-    engine = VCEngineDataFactory('/root/autodl-tmp/vc-models/ar-1024.ckpt',
-                                 '/root/autodl-tmp/vc-models/nar-1024.ckpt',
-                                 'configs/ar_model.json',
-                                 'configs/nar_model.json',
+    engine = VCEngineDataFactory(ar_model_path,
+                                 nar_model_path,
+                                 ar_config_file,
+                                 nar_config_file,
                                  device=f'cuda:{device_id}')
     output_records = []
     for record in tqdm(record_list):
@@ -38,55 +44,73 @@ def process_records(record_list, device_id=0):
             )
     return output_records
 
+def construct_parallel_dataset(input_data_path: str ="/root/autodl-tmp/jr_dataset/shard-000000.tar",
+                               ref_data_path: str ="/root/autodl-tmp/shard-000000.tar",
+                               repeat_num: int = 3,
+                               num_devices: int = 1,
+                               output_dir: str = "/root/autodl-tmp/data/jr-wds-pair/train",
+                               ar_model_path = '/root/autodl-tmp/vc-models/ar-1024.ckpt',
+                               nar_model_path = '/root/autodl-tmp/vc-models/nar-1024.ckpt',
+                               ar_config_file = 'configs/ar_model.json',
+                               nar_config_file = 'configs/nar_model.json'):
+    """
+    Args:
+        input_data_path: str. The target person's voice audio file.
+        ref_data_path: str. files consisting of a large number of different voices, used for prompts.
+        repeat_num: int. The number of repetitions in constructing the dataset.
+        output_dir: str.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    dataset1 = wds.WebDataset(input_data_path)
+    dataset1 = dataset1.decode()
 
-dataset1 = wds.WebDataset("/root/autodl-tmp/data/lyh-wds/train/shard-000000.tar")
-dataset1 = dataset1.decode()
+    dataset2 = wds.WebDataset(ref_data_path)
+    dataset2 = dataset2.decode()
 
-dataset2 = wds.WebDataset("/root/autodl-tmp/data/wds/train/shard-000000.tar")
-dataset2 = dataset2.decode()
+    dataset2 = iter(dataset2)
 
 
-dataset2 = iter(dataset2)
+    index = 0
 
-import os
+    records = []
 
-index = 0
+    for i in range(repeat_num):
+        for record_idx, item1 in tqdm(enumerate(dataset1)):
+            # if record_idx >= 40/2:
+            #     continue
+            item2 = next(dataset2)
+            obj1, obj2 = item1['data.pyd'], item2['data.pyd']
+            mel1, code1, mel2, code2 = obj1['mel'], obj1['code'], obj2['mel'], obj2['code']
+            records.append({
+                'index': index,
+                'mel1': mel1,
+                'code1': code1,
+                'mel2': mel2,
+                'code2': code2
+            })
+            index += 1
+    print(index)
 
-records = []
+    from joblib.parallel import Parallel, delayed
 
-for i in range(18):
-    for record_idx, item1 in tqdm(enumerate(dataset1)):
-        # if record_idx >= 40/2:
-        #     continue
-        item2 = next(dataset2)
-        obj1, obj2 = item1['data.pyd'], item2['data.pyd']
-        mel1, code1, mel2, code2 = obj1['mel'], obj1['code'], obj2['mel'], obj2['code']
-        records.append({
-            'index': index,
-            'mel1': mel1,
-            'code1': code1,
-            'mel2': mel2,
-            'code2': code2
-        })
-        index += 1
+    n_jobs = num_devices
+    segment_num = int(len(records) / n_jobs)
 
-print(index)
+    result_list = Parallel(n_jobs=n_jobs)(delayed(process_records)(records[i * segment_num:(i + 1) * segment_num],
+                                                                   i % num_devices,
+                                                                   ar_model_path,
+                                                                   nar_model_path,
+                                                                   ar_config_file,
+                                                                   nar_config_file) \
+                                          for i in range(n_jobs))
+    outputs = []
+    for item in result_list:
+        outputs.extend(item)
 
-from joblib.parallel import Parallel, delayed
+    with wds.ShardWriter(os.path.join(output_dir, 'shard-%06d.tar'),
+                         maxcount=10000000, maxsize=1 << 32) as sink:
+        for record in outputs:
+            sink.write(record)
 
-n_jobs = 4
-num_devices = 2
-segment_num = int(len(records)/n_jobs)
-
-result_list = Parallel(n_jobs=n_jobs)(delayed(process_records)(records[i*segment_num:(i+1)*segment_num],
-                                                 i % num_devices) \
-                        for i in range(n_jobs))
-outputs = []
-for item in result_list:
-    outputs.extend(item)
-
-with wds.ShardWriter(os.path.join("/root/autodl-tmp/data/lyh-p-wds/train", 'shard-%06d.tar'),
-                     maxcount=10000000, maxsize=1 << 32) as sink:
-    for record in outputs:
-        sink.write(record)
-
+if __name__ == '__main__':
+    fire.Fire(construct_parallel_dataset)

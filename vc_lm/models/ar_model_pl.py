@@ -19,7 +19,9 @@ class ARModelPL(pl.LightningModule):
                  lr: float = 0.001,
                  weight_decay: float = 0.0005,
                  warmup_step: int = 10000,
-                 max_iters: int = 800000):
+                 max_iters: int = 800000,
+                 load_pretrain: bool = False,
+                 pretrain_model_path: str = None):
         super().__init__()
         self.save_hyperparameters()
         with open(config_file) as f:
@@ -31,12 +33,10 @@ class ARModelPL(pl.LightningModule):
 
         self.loss_fct = nn.CrossEntropyLoss()
 
-        # loaded_state = torch.load('/root/autodl-tmp/vc-models/ar-1024.ckpt')['state_dict']
-        # # for k, v in list(loaded_state.items()):
-        # #     if '.encoder.' in k:
-        # #         del loaded_state[k]
-        # self.load_state_dict(loaded_state,
-        #                      strict=False)
+        if load_pretrain:
+            loaded_state = torch.load(pretrain_model_path)['state_dict']
+            self.load_state_dict(loaded_state,
+                                 strict=False)
 
         self.train_accuracy = Accuracy(task="multiclass",
                                        num_classes=self.model.model.shared.num_embeddings,

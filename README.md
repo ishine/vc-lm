@@ -3,6 +3,9 @@
 
 vc-lm是一个可以将任意人的音色转换为成千上万种不同音色的音频的项目。
 
+## 🔄 最近更新
+* [2023/06/09] 新增Any-to-One声音转换模型训练.
+
 ## 算法架构
 该项目参考论文 [Vall-E](https://arxiv.org/abs/2301.02111)
 
@@ -32,12 +35,13 @@ vc-lm是一个可以将任意人的音色转换为成千上万种不同音色的
 ## 构造数据集
 
 ```
+# 所有wav文件先处理成长度10~24s的文件, 参考文件[tools/construct_wavs_file.py]
 python tools/construct_dataset.py
 ```
 ## 转换whisper encoder模型
 
 ```
-python tools/extract_whisper_encoder_model.py --input_model=../whisper/small.pt --output_model=../whisper-encoder/small-encoder.pt
+python tools/extract_whisper_encoder_model.py --input_model=../whisper/medium.pt --output_model=../whisper-encoder/medium-encoder.pt
 ```
 ## 训练
 ```
@@ -78,4 +82,30 @@ output_wav = engine.process_audio(content_wav,
 ---
 ```
 本项目模型可以生成大量one-to-any的平行数据(也就是any-to-one)。这些平行数据可以被用来训练 Any-to-One 的变声模型。
+```
+---
+## 训练Any-to-One VC模型
+目标人数据仅需10分钟，即可达到很好的效果。
+
+### 构造Any-to-one平行数据
+```
+# 需要构造train, val, test数据
+python tools.construct_parallel_dataset.py
+```
+### 训练模型
+加载上面的预训练模型，在指定人数据上训练。
+```
+bash ./sh/train_finetune_ar_model.sh
+bash ./sh/train_finetune_nar_model.sh
+```
+
+### 推理
+```
+from vc_lm.vc_engine import VCEngine
+engine = VCEngine('/root/autodl-tmp/vc-models/jr-ar.ckpt',
+                  '/root/autodl-tmp/vc-models/jr-nar.ckpt',
+                  '/root/project/vc-lm/configs/ar_model.json',
+                  '/root/project/vc-lm/configs/nar_model.json')
+output_wav = engine.process_audio(content_wav,
+                                  style_wav, max_style_len=3, use_ar=True)           
 ```
