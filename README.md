@@ -87,6 +87,12 @@ output_wav = engine.process_audio(content_wav,
 ## 训练Any-to-One VC模型
 目标人数据仅需10分钟，即可达到很好的效果。
 
+### 构造数据集
+```
+# 所有wav文件先处理成长度10~24s的文件, 参考文件[tools/construct_wavs_file.py]
+python tools/construct_dataset.py
+```
+
 ### 构造Any-to-one平行数据
 ```
 # 需要构造train, val, test数据
@@ -109,3 +115,8 @@ engine = VCEngine('/root/autodl-tmp/vc-models/jr-ar.ckpt',
 output_wav = engine.process_audio(content_wav,
                                   style_wav, max_style_len=3, use_ar=True)           
 ```
+### DEMO
+#### 输入音频:  
+https://github.com/nilboy/vc-lm/assets/17962699/d9c7fb99-7d34-468b-a376-1c8c882d97e2
+#### 输出音频:
+https://github.com/nilboy/vc-lm/assets/17962699/7a7620d7-e71b-4655-8ad4-2fb543c92960

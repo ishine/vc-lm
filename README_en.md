@@ -86,6 +86,12 @@ This project's models can generate a large number of one-to-any parallel data (i
 ## Training Any-to-One VC Model
 The target speaker's data achieves excellent results in just 10 minutes.
 
+### Dataset Construction
+```
+# All WAV files are first processed into files with a length of 10 to 24 seconds. Reference to[[tools/construct_wavs_file.py]
+python tools/construct_dataset.py
+```
+
 ### Constructing Any-to-One Parallel Data
 ```
 # Construct train, val, test data
@@ -108,3 +114,8 @@ engine = VCEngine('/root/autodl-tmp/vc-models/jr-ar.ckpt',
 output_wav = engine.process_audio(content_wav,
                                   style_wav, max_style_len=3, use_ar=True)           
 ```
+### DEMO
+#### Input Audio:  
+https://github.com/nilboy/vc-lm/assets/17962699/d9c7fb99-7d34-468b-a376-1c8c882d97e2
+#### Output Audio:
+https://github.com/nilboy/vc-lm/assets/17962699/7a7620d7-e71b-4655-8ad4-2fb543c92960
