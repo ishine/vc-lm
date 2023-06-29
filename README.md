@@ -59,13 +59,6 @@ output_wav = engine.process_audio(content_wav,
                                   style_wav, max_style_len=3, use_ar=True)           
 ```
 
-## 模型
-模型是在Wenetspeech数千小时音频数据集上进行训练得到，包括AR模型和NAR模型。
-
-模型下载地址:
-
-链接: https://pan.baidu.com/s/1bJUXrSH7tJ1QLPTv3tZzRQ 提取码: 4kao
-
 ## 样例展示
 [输入音频](res/test-in.wav)
 
